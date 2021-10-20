@@ -11,7 +11,7 @@
 static void PrintInt(Interp &interp)
 {
   auto v = interp.PeekInt();
-  std::cout << v;
+  std::cout << '\n' << v << '\n';
   interp.Push<int64_t>(v);
 }
 
