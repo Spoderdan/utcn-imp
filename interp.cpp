@@ -58,6 +58,8 @@ void Interp::Run()
         auto lhs = PopInt();
         if ((lhs > 0) && (rhs > INT_MAX - lhs))
           throw RuntimeError("addition overflow");
+        if ((lhs < 0) && (rhs < INT_MIN - lhs))
+          throw RuntimeError("addition underflow");
         Push(lhs + rhs);
         continue;
       }
