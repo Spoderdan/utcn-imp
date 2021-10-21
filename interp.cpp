@@ -4,6 +4,7 @@
 #include "program.h"
 
 #include <iostream>
+#include <limits.h>
 
 
 
@@ -55,6 +56,8 @@ void Interp::Run()
       case Opcode::ADD: {
         auto rhs = PopInt();
         auto lhs = PopInt();
+        if ((lhs > 0) && (rhs > INT_MAX - lhs))
+          throw RuntimeError("addition overflow");
         Push(lhs + rhs);
         continue;
       }
