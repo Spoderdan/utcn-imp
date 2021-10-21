@@ -128,6 +128,9 @@ private:
   /// Lowers a call expression.
   void LowerCallExpr(const Scope &scope, const CallExpr &expr);
 
+    /// Lowers a call expression.
+  void LowerIntExpression(const Scope &scope, const IntExpr &number);
+
   /// Lowers a function declaration.
   void LowerFuncDecl(const Scope &scope, const FuncDecl &funcDecl);
 
@@ -145,6 +148,8 @@ private:
   void EmitPushProto(RuntimeFn fn);
   /// Push the nth value from the stack to the top.
   void EmitPeek(uint32_t index);
+  /// Emit an int instruction.
+  void EmitInt(uint64_t n);
   /// Emit a return instruction.
   void EmitReturn();
   /// Emit an add opcode.
