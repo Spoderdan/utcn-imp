@@ -128,6 +128,8 @@ std::ostream &operator<<(std::ostream &os, const Token::Kind kind)
     case Token::Kind::FUNC: return os << "func";
     case Token::Kind::RETURN: return os << "return";
     case Token::Kind::WHILE: return os << "while";
+    case Token::Kind::IF: return os << "if";
+    case Token::Kind::ELSE: return os << "else";
     case Token::Kind::LPAREN: return os << "(";
     case Token::Kind::RPAREN: return os << ")";
     case Token::Kind::LBRACE: return os << "{";
@@ -138,6 +140,14 @@ std::ostream &operator<<(std::ostream &os, const Token::Kind kind)
     case Token::Kind::COMMA: return os << ",";
     case Token::Kind::PLUS: return os << "+";
     case Token::Kind::MINUS: return os << "-";
+    case Token::Kind::MUL: return os << "*";
+    case Token::Kind::DIV: return os << "/";
+    case Token::Kind::MOD: return os << "%";
+    case Token::Kind::GREATER: return os << ">";
+    case Token::Kind::LOWER: return os << "<";
+    case Token::Kind::GREATER_EQ: return os << ">=";
+    case Token::Kind::LOWER_EQ: return os << "<=";
+    case Token::Kind::IS_EQ: return os << "==";
     case Token::Kind::END: return os << "END";
     case Token::Kind::INT: return os << "INT";
     case Token::Kind::STRING: return os << "STRING";
@@ -197,9 +207,34 @@ const Token &Lexer::Next()
     case '}': return NextChar(), tk_ = Token::RBrace(loc);
     case ':': return NextChar(), tk_ = Token::Colon(loc);
     case ';': return NextChar(), tk_ = Token::Semi(loc);
-    case '=': return NextChar(), tk_ = Token::Equal(loc);
+    case '=': {
+      NextChar();
+      if(chr_ == '='){
+        return NextChar(), tk_ = Token::IsEqual(loc);
+      }
+      return tk_ = Token::Equal(loc);
+    }
     case '+': return NextChar(), tk_ = Token::Plus(loc);
     case '-': return NextChar(), tk_ = Token::Minus(loc);
+    case '*': return NextChar(), tk_ = Token::Mul(loc);
+    case '/': return NextChar(), tk_ = Token::Div(loc);
+    case '%': return NextChar(), tk_ = Token::Mod(loc);
+    case '>': {
+      NextChar();
+      if(chr_ == '=') {
+        return NextChar(), tk_ = Token::GreaterEqual(loc);
+      } else {
+        return tk_ = Token::Greater(loc);
+      }
+    }
+    case '<': {
+      NextChar();
+      if(chr_ == '=') {
+        return NextChar(), tk_ = Token::LowerEqual(loc);
+      } else {
+        return tk_ = Token::Lower(loc);
+      }
+    }
     case ',': return NextChar(), tk_ = Token::Comma(loc);
     case '"': {
       std::string word;
@@ -220,7 +255,6 @@ const Token &Lexer::Next()
           number = number*10 + (chr_ - '0');
           NextChar();
         }
-        NextChar();
         return tk_ = Token::Integer(loc, number);
     }
     default: {
@@ -233,6 +267,8 @@ const Token &Lexer::Next()
         if (word == "func") return tk_ = Token::Func(loc);
         if (word == "return") return tk_ = Token::Return(loc);
         if (word == "while") return tk_ = Token::While(loc);
+        if (word == "if") return tk_ = Token::If(loc);
+        if (word == "else") return tk_ = Token::Else(loc);
         return tk_ = Token::Ident(loc, word);
       }
       Error("unknown character '" + std::string(1, chr_) + "'");

@@ -7,8 +7,6 @@
 #include "codegen.h"
 #include "ast.h"
 
-
-
 // -----------------------------------------------------------------------------
 Codegen::Scope::~Scope()
 {
@@ -18,7 +16,8 @@ Codegen::Scope::~Scope()
 Codegen::Binding Codegen::GlobalScope::Lookup(const std::string &name) const
 {
   // Find the name among functions.
-  if (auto it = funcs_.find(name); it != funcs_.end()) {
+  if (auto it = funcs_.find(name); it != funcs_.end())
+  {
     Binding b;
     b.Kind = Binding::Kind::FUNC;
     b.Entry = it->second;
@@ -26,7 +25,8 @@ Codegen::Binding Codegen::GlobalScope::Lookup(const std::string &name) const
   }
 
   // Find the name among prototypes.
-  if (auto it = protos_.find(name); it != protos_.end()) {
+  if (auto it = protos_.find(name); it != protos_.end())
+  {
     Binding b;
     b.Kind = Binding::Kind::PROTO;
     b.Fn = it->second;
@@ -41,7 +41,8 @@ Codegen::Binding Codegen::GlobalScope::Lookup(const std::string &name) const
 Codegen::Binding Codegen::FuncScope::Lookup(const std::string &name) const
 {
   // Find the name among arguments.
-  if (auto it = args_.find(name); it != args_.end()) {
+  if (auto it = args_.find(name); it != args_.end())
+  {
     Binding b;
     b.Kind = Binding::Kind::ARG;
     b.Index = it->second;
@@ -65,8 +66,10 @@ std::unique_ptr<Program> Codegen::Translate(const Module &mod)
   // Traverse all the function & function prototype declarations and record
   // them in the global symbol table.
   std::map<std::string, RuntimeFn> protos;
-  for (auto item : mod) {
-    if (std::holds_alternative<std::shared_ptr<ProtoDecl>>(item)) {
+  for (auto item : mod)
+  {
+    if (std::holds_alternative<std::shared_ptr<ProtoDecl>>(item))
+    {
       // The name of the prototype is mapped to the pointer
       // to the function implementing it.
       auto &proto = *std::get<1>(item);
@@ -74,7 +77,8 @@ std::unique_ptr<Program> Codegen::Translate(const Module &mod)
       assert(it != kRuntimeFns.end() && "missing prototype");
       protos.emplace(proto.GetName(), it->second);
     }
-    if (std::holds_alternative<std::shared_ptr<FuncDecl>>(item)) {
+    if (std::holds_alternative<std::shared_ptr<FuncDecl>>(item))
+    {
       // Map the function to a newly created label, which will be used
       // as the address to be invoked by call instructions.
       auto &func = *std::get<0>(item);
@@ -85,8 +89,10 @@ std::unique_ptr<Program> Codegen::Translate(const Module &mod)
   // Compile all top-level statements in the beginning, to ensure that the
   // instruction at the start of the bytecode stream starts the program.
   GlobalScope global(funcs_, protos);
-  for (auto item : mod) {
-    if (!std::holds_alternative<std::shared_ptr<Stmt>>(item)) {
+  for (auto item : mod)
+  {
+    if (!std::holds_alternative<std::shared_ptr<Stmt>>(item))
+    {
       continue;
     }
     LowerStmt(global, *std::get<2>(item));
@@ -94,8 +100,10 @@ std::unique_ptr<Program> Codegen::Translate(const Module &mod)
   Emit<Opcode>(Opcode::STOP);
 
   // Emit code for all functions.
-  for (auto item : mod) {
-    if (!std::holds_alternative<std::shared_ptr<FuncDecl>>(item)) {
+  for (auto item : mod)
+  {
+    if (!std::holds_alternative<std::shared_ptr<FuncDecl>>(item))
+    {
       continue;
     }
     LowerFuncDecl(global, *std::get<0>(item));
@@ -107,19 +115,28 @@ std::unique_ptr<Program> Codegen::Translate(const Module &mod)
 // -----------------------------------------------------------------------------
 void Codegen::LowerStmt(const Scope &scope, const Stmt &stmt)
 {
-  switch (stmt.GetKind()) {
-    case Stmt::Kind::BLOCK: {
-      return LowerBlockStmt(scope, static_cast<const BlockStmt &>(stmt));
-    }
-    case Stmt::Kind::WHILE: {
-      return LowerWhileStmt(scope, static_cast<const WhileStmt &>(stmt));
-    }
-    case Stmt::Kind::EXPR: {
-      return LowerExprStmt(scope, static_cast<const ExprStmt &>(stmt));
-    }
-    case Stmt::Kind::RETURN: {
-      return LowerReturnStmt(scope, static_cast<const ReturnStmt &>(stmt));
-    }
+  switch (stmt.GetKind())
+  {
+  case Stmt::Kind::BLOCK:
+  {
+    return LowerBlockStmt(scope, static_cast<const BlockStmt &>(stmt));
+  }
+  case Stmt::Kind::WHILE:
+  {
+    return LowerWhileStmt(scope, static_cast<const WhileStmt &>(stmt));
+  }
+  case Stmt::Kind::IF:
+  {
+    return LowerIfStmt(scope, static_cast<const IfStmt &>(stmt));
+  }
+  case Stmt::Kind::EXPR:
+  {
+    return LowerExprStmt(scope, static_cast<const ExprStmt &>(stmt));
+  }
+  case Stmt::Kind::RETURN:
+  {
+    return LowerReturnStmt(scope, static_cast<const ReturnStmt &>(stmt));
+  }
   }
 }
 
@@ -129,7 +146,8 @@ void Codegen::LowerBlockStmt(const Scope &scope, const BlockStmt &blockStmt)
   unsigned depthIn = depth_;
 
   BlockScope blockScope(&scope);
-  for (auto &stmt : blockStmt) {
+  for (auto &stmt : blockStmt)
+  {
     LowerStmt(blockScope, *stmt);
   }
 
@@ -151,6 +169,26 @@ void Codegen::LowerWhileStmt(const Scope &scope, const WhileStmt &whileStmt)
 }
 
 // -----------------------------------------------------------------------------
+void Codegen::LowerIfStmt(const Scope &scope, const IfStmt &ifStmt)
+{
+  auto entry = MakeLabel();
+  auto elseLabel = MakeLabel();
+  auto exit = MakeLabel();
+
+  EmitLabel(entry);
+  LowerExpr(scope, ifStmt.GetCond());
+  EmitJumpFalse(elseLabel);
+  LowerStmt(scope, ifStmt.GetStmt());
+  EmitJump(exit);
+  EmitLabel(elseLabel);
+  if (auto elseBranch = ifStmt.GetElseStmt())
+  {
+    LowerStmt(scope, *elseBranch);
+  }
+  EmitLabel(exit);
+}
+
+// -----------------------------------------------------------------------------
 void Codegen::LowerReturnStmt(const Scope &scope, const ReturnStmt &retStmt)
 {
   LowerExpr(scope, retStmt.GetExpr());
@@ -167,19 +205,24 @@ void Codegen::LowerExprStmt(const Scope &scope, const ExprStmt &exprStmt)
 // -----------------------------------------------------------------------------
 void Codegen::LowerExpr(const Scope &scope, const Expr &expr)
 {
-  switch (expr.GetKind()) {
-    case Expr::Kind::REF: {
-      return LowerRefExpr(scope, static_cast<const RefExpr &>(expr));
-    }
-    case Expr::Kind::BINARY: {
-      return LowerBinaryExpr(scope, static_cast<const BinaryExpr &>(expr));
-    }
-    case Expr::Kind::CALL: {
-      return LowerCallExpr(scope, static_cast<const CallExpr &>(expr));
-    }
-    case Expr::Kind::INT: {
-      return LowerIntExpression(scope, static_cast<const IntExpr &>(expr));
-    }
+  switch (expr.GetKind())
+  {
+  case Expr::Kind::REF:
+  {
+    return LowerRefExpr(scope, static_cast<const RefExpr &>(expr));
+  }
+  case Expr::Kind::BINARY:
+  {
+    return LowerBinaryExpr(scope, static_cast<const BinaryExpr &>(expr));
+  }
+  case Expr::Kind::CALL:
+  {
+    return LowerCallExpr(scope, static_cast<const CallExpr &>(expr));
+  }
+  case Expr::Kind::INT:
+  {
+    return LowerIntExpression(scope, static_cast<const IntExpr &>(expr));
+  }
   }
 }
 
@@ -187,19 +230,23 @@ void Codegen::LowerExpr(const Scope &scope, const Expr &expr)
 void Codegen::LowerRefExpr(const Scope &scope, const RefExpr &expr)
 {
   auto binding = scope.Lookup(expr.GetName());
-  switch (binding.Kind) {
-    case Binding::Kind::FUNC: {
-      EmitPushFunc(binding.Entry);
-      return;
-    }
-    case Binding::Kind::PROTO: {
-      EmitPushProto(binding.Fn);
-      return;
-    }
-    case Binding::Kind::ARG: {
-      EmitPeek(depth_ + binding.Index + 1);
-      return;
-    }
+  switch (binding.Kind)
+  {
+  case Binding::Kind::FUNC:
+  {
+    EmitPushFunc(binding.Entry);
+    return;
+  }
+  case Binding::Kind::PROTO:
+  {
+    EmitPushProto(binding.Fn);
+    return;
+  }
+  case Binding::Kind::ARG:
+  {
+    EmitPeek(depth_ + binding.Index + 1);
+    return;
+  }
   }
 }
 
@@ -208,20 +255,56 @@ void Codegen::LowerBinaryExpr(const Scope &scope, const BinaryExpr &binary)
 {
   LowerExpr(scope, binary.GetLHS());
   LowerExpr(scope, binary.GetRHS());
-  switch (binary.GetKind()) {
-    case BinaryExpr::Kind::ADD: {
-      return EmitAdd();
-    }
-    case BinaryExpr::Kind::SUB: {
-      return EmitSub();
-    }
+  switch (binary.GetKind())
+  {
+  case BinaryExpr::Kind::ADD:
+  {
+    return EmitAdd();
+  }
+  case BinaryExpr::Kind::SUB:
+  {
+    return EmitSub();
+  }
+  case BinaryExpr::Kind::MUL:
+  {
+    return EmitMul();
+  }
+  case BinaryExpr::Kind::DIV:
+  {
+    return EmitDiv();
+  }
+  case BinaryExpr::Kind::MOD:
+  {
+    return EmitMod();
+  }
+  case BinaryExpr::Kind::GREATER:
+  {
+    return EmitGreater();
+  }
+  case BinaryExpr::Kind::LOWER:
+  {
+    return EmitLower();
+  }
+  case BinaryExpr::Kind::GREATER_EQ:
+  {
+    return EmitGreaterEqual();
+  }
+  case BinaryExpr::Kind::LOWER_EQ:
+  {
+    return EmitLowerEqual();
+  }
+  case BinaryExpr::Kind::IS_EQ:
+  {
+    return EmitIsEqual();
+  }
   }
 }
 
 // -----------------------------------------------------------------------------
 void Codegen::LowerCallExpr(const Scope &scope, const CallExpr &call)
 {
-  for (auto it = call.arg_rbegin(), end = call.arg_rend(); it != end; ++it) {
+  for (auto it = call.arg_rbegin(), end = call.arg_rend(); it != end; ++it)
+  {
     LowerExpr(scope, **it);
   }
   LowerExpr(scope, call.GetCallee());
@@ -248,7 +331,8 @@ void Codegen::LowerFuncDecl(const Scope &scope, const FuncDecl &decl)
   assert(depth_ == 0 && "invalid stack depth in global scope");
   {
     std::map<std::string, uint32_t> args;
-    for (auto it = decl.arg_begin(), end = decl.arg_end(); it != end; ++it) {
+    for (auto it = decl.arg_begin(), end = decl.arg_end(); it != end; ++it)
+    {
       args[it->first] = args.size();
     }
 
@@ -267,7 +351,7 @@ Codegen::Label Codegen::MakeLabel()
 }
 
 // -----------------------------------------------------------------------------
-template<typename T>
+template <typename T>
 void Codegen::Emit(const T &t)
 {
   size_t offset = code_.size();
@@ -279,7 +363,8 @@ void Codegen::Emit(const T &t)
 void Codegen::EmitLabel(Label label)
 {
   size_t address = code_.size();
-  for (auto loc : fixups_[label]) {
+  for (auto loc : fixups_[label])
+  {
     memcpy(code_.data() + loc, &address, sizeof(unsigned));
   }
   labelToAddress_.emplace(label, code_.size());
@@ -288,9 +373,12 @@ void Codegen::EmitLabel(Label label)
 // -----------------------------------------------------------------------------
 void Codegen::EmitFixup(Label label)
 {
-  if (auto it = labelToAddress_.find(label); it != labelToAddress_.end()) {
+  if (auto it = labelToAddress_.find(label); it != labelToAddress_.end())
+  {
     Emit<size_t>(it->second);
-  } else {
+  }
+  else
+  {
     fixups_[label].push_back(code_.size());
     Emit<size_t>(0);
   }
@@ -366,6 +454,69 @@ void Codegen::EmitSub()
   assert(depth_ > 0 && "no elements on stack");
   depth_ -= 1;
   Emit<Opcode>(Opcode::SUB);
+}
+
+// -----------------------------------------------------------------------------
+void Codegen::EmitMul()
+{
+  assert(depth_ > 0 && "no elements on stack");
+  depth_ -= 1;
+  Emit<Opcode>(Opcode::MUL);
+}
+
+// -----------------------------------------------------------------------------
+void Codegen::EmitDiv()
+{
+  assert(depth_ > 0 && "no elements on stack");
+  depth_ -= 1;
+  Emit<Opcode>(Opcode::DIV);
+}
+
+// -----------------------------------------------------------------------------
+void Codegen::EmitMod()
+{
+  assert(depth_ > 0 && "no elements on stack");
+  depth_ -= 1;
+  Emit<Opcode>(Opcode::MOD);
+}
+
+// -----------------------------------------------------------------------------
+void Codegen::EmitGreater()
+{
+  assert(depth_ > 0 && "no elements on stack");
+  depth_ -= 1;
+  Emit<Opcode>(Opcode::GREATER);
+}
+
+// -----------------------------------------------------------------------------
+void Codegen::EmitLower()
+{
+  assert(depth_ > 0 && "no elements on stack");
+  depth_ -= 1;
+  Emit<Opcode>(Opcode::LOWER);
+}
+
+// -----------------------------------------------------------------------------
+void Codegen::EmitGreaterEqual()
+{
+  assert(depth_ > 0 && "no elements on stack");
+  depth_ -= 1;
+  Emit<Opcode>(Opcode::GREATER_EQ);
+}
+
+// -----------------------------------------------------------------------------
+void Codegen::EmitLowerEqual()
+{
+  assert(depth_ > 0 && "no elements on stack");
+  depth_ -= 1;
+  Emit<Opcode>(Opcode::LOWER_EQ);
+}
+
+void Codegen::EmitIsEqual()
+{
+  assert(depth_ > 0 && "no elements on stack");
+  depth_ -= 1;
+  Emit<Opcode>(Opcode::IS_EQ);
 }
 
 // -----------------------------------------------------------------------------

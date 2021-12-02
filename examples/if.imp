@@ -1,0 +1,12 @@
+
+func print_int(a: int): int = "print_int"
+func read_int(): int = "read_int"
+
+func exp(n: int): int {
+  if (n == 0) {
+    return 1
+  };
+  return 2
+}
+
+print_int(exp(read_int()))
