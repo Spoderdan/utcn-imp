@@ -39,6 +39,7 @@ public:
     WHILE,
     IF,
     ELSE,
+    LET,
     // Symbols.
     LPAREN,
     RPAREN,
@@ -117,6 +118,7 @@ public:
   static Token Colon(const Location &l) { return Token(l, Kind::COLON); }
   static Token Semi(const Location &l) { return Token(l, Kind::SEMI); }
   static Token Equal(const Location &l) { return Token(l, Kind::EQUAL); }
+  static Token Let(const Location &l) { return Token(l, Kind::LET); }
   static Token Plus(const Location &l) { return Token(l, Kind::PLUS); }
   static Token Minus(const Location &l) { return Token(l, Kind::MINUS); }
   static Token Mul(const Location &l) { return Token(l, Kind::MUL); }
